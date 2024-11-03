@@ -6,82 +6,81 @@
 
 Estrada *getEstrada(const char *nomeArquivo)
 {
-  FILE *arquivo = fopen(nomeArquivo, "r+");
+  FILE *arquivo = fopen(nomeArquivo, "r");
   if (arquivo == NULL)
   {
-    perror("Nao foi possivel realizar a leitura do arquivo.\n");
-    exit(EXIT_FAILURE);
+    perror("Nao foi possivel realizar a leitura do arquivo.");
+    return NULL;
   }
 
-  // passou
   Estrada *estrada = (Estrada *)malloc(sizeof(Estrada));
   if (estrada == NULL)
   {
-    perror("Nao foi possivel alocar a memoria para a estrada.\n");
-    exit(EXIT_FAILURE);
+    perror("Nao foi possivel alocar a memoria para a estrada.");
+    fclose(arquivo);
+    return NULL;
   }
 
-  // passou
   if (fscanf(arquivo, "%d", &(estrada->T)) != 1)
   {
-    perror("Falha ao ler o comprimento da estrada.\n");
+    perror("Falha ao ler o comprimento da estrada.");
     free(estrada);
     fclose(arquivo);
-    exit(EXIT_FAILURE);
+    return NULL;
   }
 
-  // passou
   if (estrada->T < 3 || estrada->T > 1000000)
   {
-    perror("Comprimento da estrada esta fora dos limites permitidos.\n");
+    perror("Comprimento da estrada esta fora dos limites permitidos.");
     free(estrada);
     fclose(arquivo);
-    exit(EXIT_FAILURE);
+    return NULL;
   }
 
   if (fscanf(arquivo, "%d", &(estrada->N)) != 1)
   {
-    perror("Falha ao ler numero de cidades.\n");
+    perror("Falha ao ler numero de cidades.");
     free(estrada);
     fclose(arquivo);
-    exit(EXIT_FAILURE);
+    return NULL;
   }
+
   if (estrada->N < 2 || estrada->N > 10000)
   {
-    perror("Numero de cidades esta fora dos limites permitidos.\n");
+    perror("Numero de cidades esta fora dos limites permitidos.");
     free(estrada);
     fclose(arquivo);
-    exit(EXIT_FAILURE);
+    return NULL;
   }
 
   estrada->C = (Cidade *)malloc(estrada->N * sizeof(Cidade));
   if (estrada->C == NULL)
   {
-    perror("Falha na alocacao de memoria para as cidades.\n");
+    perror("Falha na alocacao de memoria para as cidades.");
     free(estrada);
     fclose(arquivo);
-    exit(EXIT_FAILURE);
+    return NULL;
   }
 
   for (int i = 0; i < estrada->N; i++)
   {
     int posicao;
     char nome[256];
-    if (fscanf(arquivo, "%d %255[^\n]", &posicao, nome) != 2)
+    if (fscanf(arquivo, "%d %[^\n]s", &posicao, nome) != 2)
     {
       printf("Falha ao ler os dados da cidade %d\n", i + 1);
       free(estrada->C);
       free(estrada);
       fclose(arquivo);
-      exit(EXIT_FAILURE);
+      return NULL;
     }
     if (posicao <= 0 || posicao >= estrada->T)
     {
-      perror("Posicao da cidade %d fora dos limites permitidos.\n");
+      printf("Posicao da cidade %d fora dos limites permitidos.\n", i + 1);
       free(estrada->C);
       free(estrada);
       fclose(arquivo);
-      exit(EXIT_FAILURE);
+      return NULL;
     }
 
     estrada->C[i].Posicao = posicao;
@@ -92,28 +91,35 @@ Estrada *getEstrada(const char *nomeArquivo)
   return estrada;
 }
 
-double calcularMenorVizinhanca(const char *nomeArquivo)
+int compararCidades(const void *a, const void *b)
 {
-  Estrada *estrada = getEstrada(nomeArquivo);
+  Cidade *cidadeA = (Cidade *)a;
+  Cidade *cidadeB = (Cidade *)b;
+  return cidadeA->Posicao - cidadeB->Posicao;
+}
 
-  if (estrada == NULL)
-  {
-    perror("Nao foi possivel inicializar a estrada para calcular a menor vizinhanca.\n");
-    exit(EXIT_FAILURE);
-  }
+double calcularMenorVizinhanca(const char *NomeArquivo)
+{
+  Estrada *estrada = getEstrada(NomeArquivo);
+  if (!estrada)
+    return -1;
 
-  double menorVizinhanca = (double)(estrada->T);
-  for (int i = 1; i < estrada->N; i++)
+  double menorVizinhanca = estrada->T;
+
+  for (int i = 0; i < estrada->N - 1; i++)
   {
-    double vizinhanca = (estrada->C[i].Posicao - estrada->C[i - 1].Posicao) / 2.0;
-    if (vizinhanca - menorVizinhanca)
+    int distanciaAtual = estrada->C[i + 1].Posicao - estrada->C[i].Posicao;
+    double vizinhancaAtual = distanciaAtual / 2.0;
+
+    if (vizinhancaAtual < menorVizinhanca)
     {
-      menorVizinhanca = vizinhanca;
+      menorVizinhanca = vizinhancaAtual;
     }
   }
 
   free(estrada->C);
   free(estrada);
+
   return menorVizinhanca;
 }
 
