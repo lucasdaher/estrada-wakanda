@@ -1,62 +1,41 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "cidades.h"
 
+// Funcao auxiliar para comparar cidades pela posicao
+int compararPosicoes(const void *a, const void *b)
+{
+  Cidade *cidadeA = (Cidade *)a;
+  Cidade *cidadeB = (Cidade *)b;
+  return cidadeA->Posicao - cidadeB->Posicao;
+}
+
+// Implementacao da funcao getEstrada
 Estrada *getEstrada(const char *nomeArquivo)
 {
   FILE *arquivo = fopen(nomeArquivo, "r");
-  if (arquivo == NULL)
-  {
-    perror("Nao foi possivel realizar a leitura do arquivo.");
+  if (!arquivo)
     return NULL;
-  }
 
   Estrada *estrada = (Estrada *)malloc(sizeof(Estrada));
-  if (estrada == NULL)
-  {
-    perror("Nao foi possivel alocar a memoria para a estrada.");
-    fclose(arquivo);
+  if (!estrada)
     return NULL;
-  }
 
-  if (fscanf(arquivo, "%d", &(estrada->T)) != 1)
-  {
-    perror("Falha ao ler o comprimento da estrada.");
-    free(estrada);
-    fclose(arquivo);
-    return NULL;
-  }
+  fscanf(arquivo, "%d", &(estrada->T));
+  fscanf(arquivo, "%d", &(estrada->N));
 
-  if (estrada->T < 3 || estrada->T > 1000000)
+  // Verificacao de restricoes
+  if (estrada->T < 3 || estrada->T > 1000000 || estrada->N < 2 || estrada->N > 10000)
   {
-    perror("Comprimento da estrada esta fora dos limites permitidos.");
-    free(estrada);
-    fclose(arquivo);
-    return NULL;
-  }
-
-  if (fscanf(arquivo, "%d", &(estrada->N)) != 1)
-  {
-    perror("Falha ao ler numero de cidades.");
-    free(estrada);
-    fclose(arquivo);
-    return NULL;
-  }
-
-  if (estrada->N < 2 || estrada->N > 10000)
-  {
-    perror("Numero de cidades esta fora dos limites permitidos.");
     free(estrada);
     fclose(arquivo);
     return NULL;
   }
 
   estrada->C = (Cidade *)malloc(estrada->N * sizeof(Cidade));
-  if (estrada->C == NULL)
+  if (!estrada->C)
   {
-    perror("Falha na alocacao de memoria para as cidades.");
     free(estrada);
     fclose(arquivo);
     return NULL;
@@ -64,57 +43,51 @@ Estrada *getEstrada(const char *nomeArquivo)
 
   for (int i = 0; i < estrada->N; i++)
   {
-    int posicao;
-    char nome[256];
-    if (fscanf(arquivo, "%d %[^\n]s", &posicao, nome) != 2)
-    {
-      printf("Falha ao ler os dados da cidade %d\n", i + 1);
-      free(estrada->C);
-      free(estrada);
-      fclose(arquivo);
-      return NULL;
-    }
-    if (posicao <= 0 || posicao >= estrada->T)
-    {
-      printf("Posicao da cidade %d fora dos limites permitidos.\n", i + 1);
-      free(estrada->C);
-      free(estrada);
-      fclose(arquivo);
-      return NULL;
-    }
-
-    estrada->C[i].Posicao = posicao;
-    strncpy(estrada->C[i].Nome, nome, 255);
-    estrada->C[i].Nome[255] = '\0';
+    fscanf(arquivo, "%d", &(estrada->C[i].Posicao));
+    fgetc(arquivo); // Ignora o espaco apos a posicao
+    fgets(estrada->C[i].Nome, 256, arquivo);
+    char *newline = strchr(estrada->C[i].Nome, '\n');
+    if (newline)
+      *newline = '\0';
   }
+
   fclose(arquivo);
+
+  // Ordenar cidades por posicao
+  qsort(estrada->C, estrada->N, sizeof(Cidade), compararPosicoes);
+
   return estrada;
 }
 
-int compararCidades(const void *a, const void *b)
+// Funcao para calcular a menor vizinhanca
+double calcularMenorVizinhanca(const char *nomeArquivo)
 {
-  Cidade *cidadeA = (Cidade *)a;
-  Cidade *cidadeB = (Cidade *)b;
-  return cidadeA->Posicao - cidadeB->Posicao;
-}
-
-double calcularMenorVizinhanca(const char *NomeArquivo)
-{
-  Estrada *estrada = getEstrada(NomeArquivo);
+  Estrada *estrada = getEstrada(nomeArquivo);
   if (!estrada)
     return -1;
 
   double menorVizinhanca = estrada->T;
 
-  for (int i = 0; i < estrada->N - 1; i++)
+  // Calcular vizinhancas entre as cidades
+  for (int i = 1; i < estrada->N; i++)
   {
-    int distanciaAtual = estrada->C[i + 1].Posicao - estrada->C[i].Posicao;
-    double vizinhancaAtual = distanciaAtual / 2.0;
-
-    if (vizinhancaAtual < menorVizinhanca)
+    double vizinhanca = (estrada->C[i].Posicao - estrada->C[i - 1].Posicao) / 2.0;
+    if (vizinhanca < menorVizinhanca)
     {
-      menorVizinhanca = vizinhancaAtual;
+      menorVizinhanca = vizinhanca;
     }
+  }
+
+  // Considerar vizinhancas das extremidades
+  double vizinhancaEsquerda = estrada->C[0].Posicao;
+  double vizinhancaDireita = estrada->T - estrada->C[estrada->N - 1].Posicao;
+  if (vizinhancaEsquerda < menorVizinhanca)
+  {
+    menorVizinhanca = vizinhancaEsquerda;
+  }
+  if (vizinhancaDireita < menorVizinhanca)
+  {
+    menorVizinhanca = vizinhancaDireita;
   }
 
   free(estrada->C);
@@ -123,38 +96,50 @@ double calcularMenorVizinhanca(const char *NomeArquivo)
   return menorVizinhanca;
 }
 
+// Funcao para retornar a cidade com a menor vizinhanca
 char *cidadeMenorVizinhanca(const char *nomeArquivo)
 {
   Estrada *estrada = getEstrada(nomeArquivo);
-  if (estrada == NULL)
-  {
-    perror("Nao foi possivel inicializar a estrada para determinar a cidade com menor vizinhanca");
-    exit(EXIT_FAILURE);
-  }
+  if (!estrada)
+    return NULL;
 
-  int index = 0;
-  double menorVizinhanca = (double)(estrada->T);
+  double menorVizinhanca = estrada->T;
+  int indiceCidade = 0;
+
   for (int i = 1; i < estrada->N; i++)
   {
     double vizinhanca = (estrada->C[i].Posicao - estrada->C[i - 1].Posicao) / 2.0;
     if (vizinhanca < menorVizinhanca)
     {
       menorVizinhanca = vizinhanca;
-      index = i;
+      indiceCidade = i - 1;
     }
   }
 
-  char *cidade = (char *)malloc((strlen(estrada->C[index].Nome) + 1) * sizeof(char));
-  if (cidade == NULL)
+  // Verificar vizinhanca da cidade mais a esquerda
+  double vizinhancaEsquerda = estrada->C[0].Posicao;
+  if (vizinhancaEsquerda < menorVizinhanca)
   {
-    perror("Falha na alocação de memoria para o nome da cidade.\n");
-    free(estrada->C);
-    free(estrada);
-    exit(EXIT_FAILURE);
+    menorVizinhanca = vizinhancaEsquerda;
+    indiceCidade = 0;
   }
 
-  strcpy(cidade, estrada->C[index].Nome);
+  // Verificar vizinhanca da cidade mais a direita
+  double vizinhancaDireita = estrada->T - estrada->C[estrada->N - 1].Posicao;
+  if (vizinhancaDireita < menorVizinhanca)
+  {
+    menorVizinhanca = vizinhancaDireita;
+    indiceCidade = estrada->N - 1;
+  }
+
+  char *resultado = (char *)malloc(256 * sizeof(char));
+  if (resultado)
+  {
+    strcpy(resultado, estrada->C[indiceCidade].Nome);
+  }
+
   free(estrada->C);
   free(estrada);
-  return cidade;
+
+  return resultado;
 }
