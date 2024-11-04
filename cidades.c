@@ -3,7 +3,6 @@
 #include <string.h>
 #include "cidades.h"
 
-// Funcao auxiliar para comparar cidades pela posicao
 int compararPosicoes(const void *a, const void *b)
 {
   Cidade *cidadeA = (Cidade *)a;
@@ -11,7 +10,6 @@ int compararPosicoes(const void *a, const void *b)
   return cidadeA->Posicao - cidadeB->Posicao;
 }
 
-// Implementacao da funcao getEstrada
 Estrada *getEstrada(const char *nomeArquivo)
 {
   FILE *arquivo = fopen(nomeArquivo, "r");
@@ -25,7 +23,6 @@ Estrada *getEstrada(const char *nomeArquivo)
   fscanf(arquivo, "%d", &(estrada->T));
   fscanf(arquivo, "%d", &(estrada->N));
 
-  // Verificacao de restricoes
   if (estrada->T < 3 || estrada->T > 1000000 || estrada->N < 2 || estrada->N > 10000)
   {
     free(estrada);
@@ -44,7 +41,7 @@ Estrada *getEstrada(const char *nomeArquivo)
   for (int i = 0; i < estrada->N; i++)
   {
     fscanf(arquivo, "%d", &(estrada->C[i].Posicao));
-    fgetc(arquivo); // Ignora o espaco apos a posicao
+    fgetc(arquivo);
     fgets(estrada->C[i].Nome, 256, arquivo);
     char *newline = strchr(estrada->C[i].Nome, '\n');
     if (newline)
@@ -53,13 +50,11 @@ Estrada *getEstrada(const char *nomeArquivo)
 
   fclose(arquivo);
 
-  // Ordenar cidades por posicao
   qsort(estrada->C, estrada->N, sizeof(Cidade), compararPosicoes);
 
   return estrada;
 }
 
-// Funcao para calcular a menor vizinhanca
 double calcularMenorVizinhanca(const char *nomeArquivo)
 {
   Estrada *estrada = getEstrada(nomeArquivo);
@@ -68,7 +63,6 @@ double calcularMenorVizinhanca(const char *nomeArquivo)
 
   double menorVizinhanca = estrada->T;
 
-  // Calcular vizinhancas entre as cidades
   for (int i = 1; i < estrada->N; i++)
   {
     double vizinhanca = (estrada->C[i].Posicao - estrada->C[i - 1].Posicao) / 2.0;
@@ -78,7 +72,6 @@ double calcularMenorVizinhanca(const char *nomeArquivo)
     }
   }
 
-  // Considerar vizinhancas das extremidades
   double vizinhancaEsquerda = estrada->C[0].Posicao;
   double vizinhancaDireita = estrada->T - estrada->C[estrada->N - 1].Posicao;
   if (vizinhancaEsquerda < menorVizinhanca)
@@ -96,7 +89,6 @@ double calcularMenorVizinhanca(const char *nomeArquivo)
   return menorVizinhanca;
 }
 
-// Funcao para retornar a cidade com a menor vizinhanca
 char *cidadeMenorVizinhanca(const char *nomeArquivo)
 {
   Estrada *estrada = getEstrada(nomeArquivo);
@@ -116,7 +108,6 @@ char *cidadeMenorVizinhanca(const char *nomeArquivo)
     }
   }
 
-  // Verificar vizinhanca da cidade mais a esquerda
   double vizinhancaEsquerda = estrada->C[0].Posicao;
   if (vizinhancaEsquerda < menorVizinhanca)
   {
@@ -124,7 +115,6 @@ char *cidadeMenorVizinhanca(const char *nomeArquivo)
     indiceCidade = 0;
   }
 
-  // Verificar vizinhanca da cidade mais a direita
   double vizinhancaDireita = estrada->T - estrada->C[estrada->N - 1].Posicao;
   if (vizinhancaDireita < menorVizinhanca)
   {
